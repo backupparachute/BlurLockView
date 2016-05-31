@@ -44,6 +44,7 @@ public class BlurLockView extends FrameLayout
 
     private int passwordLength = 4;
     private String correctPassword = null;
+    private PinValidator pinValidator = null;
     private int incorrectInputTimes = 0;
     private Typeface typeface;
 
@@ -374,8 +375,8 @@ public class BlurLockView extends FrameLayout
      */
     @Override
     public void onPress(String string) {
-        if (correctPassword == null) {
-            throw new RuntimeException("The correct password has NOT been set!");
+        if (correctPassword == null && pinValidator == null) {
+            throw new RuntimeException("No way to validate password has been set.");
         }
         if (passwordStack.size() >= passwordLength) return;
         passwordStack.push(string);
@@ -385,25 +386,43 @@ public class BlurLockView extends FrameLayout
             nowPassword.append(s);
         }
         String nowPasswordString = nowPassword.toString();
-        if (correctPassword.equals(nowPasswordString)) {
-            // correct password
-            if (onPasswordInputListener != null)
-                onPasswordInputListener.correct(nowPasswordString);
+        onPasswordInput(nowPasswordString);
+        if(pinValidator != null) {
+            if(nowPassword.length() == passwordLength) {
+                if(pinValidator.isValid(nowPasswordString)){
+                    onPasswordCorrect(nowPasswordString);
+                } else {
+                    onPasswordIncorrect(nowPasswordString);
+                }
+            }
         } else {
-            if (correctPassword.length() > nowPasswordString.length()) {
-                // input right now
-                if (onPasswordInputListener != null)
-                    onPasswordInputListener.input(nowPasswordString);
+            if (correctPassword.equals(nowPasswordString)) {
+                // correct password
+                onPasswordCorrect(nowPasswordString);
             } else {
                 // incorrect password
-                if (onPasswordInputListener != null)
-                    onPasswordInputListener.incorrect(nowPasswordString);
+                onPasswordIncorrect(nowPasswordString);
                 // perform the clear animation
                 incorrectInputTimes++;
                 indicator.clear();
                 passwordStack.clear();
             }
         }
+    }
+
+    private void onPasswordCorrect(String password) {
+        if (onPasswordInputListener != null)
+            onPasswordInputListener.correct(password);
+    }
+
+    private void onPasswordInput(String inputPassword) {
+        if (onPasswordInputListener != null)
+            onPasswordInputListener.input(inputPassword);
+    }
+
+    private void onPasswordIncorrect(String inputPassword) {
+        if (onPasswordInputListener != null)
+            onPasswordInputListener.incorrect(inputPassword);
     }
 
     /**
@@ -608,6 +627,15 @@ public class BlurLockView extends FrameLayout
     public void setCorrectPassword(String correctPassword) {
         setPasswordLength(correctPassword.length());
         this.correctPassword = correctPassword;
+    }
+
+    /**
+     * Set the password validator.
+     *
+     * @param passwordValidator The target password.
+     */
+    public void setPasswordValidator(PinValidator passwordValidator) {
+        this.pinValidator = passwordValidator;
     }
 
     /**
